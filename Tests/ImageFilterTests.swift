@@ -22,8 +22,9 @@
 //  THE SOFTWARE.
 //
 
-#if !os(macOS)
+#if !os(macOS) && !os(watchOS)
 
+import Alamofire
 import AlamofireImage
 import Foundation
 import UIKit
@@ -32,7 +33,7 @@ import XCTest
 final class ImageFilterTestCase: BaseTestCase {
     let squareSize = CGSize(width: 50, height: 50)
     let largeSquareSize = CGSize(width: 100, height: 100)
-    let scale = Int(round(UIScreen.main.scale))
+    let scale = Int(DataRequest.imageScale)
 
     // MARK: - ImageFilter Protocol Extension Identifiers
 
@@ -99,7 +100,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatDynamicImageFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = DynamicImageFilter("DynamicScaleToSizeFilter") { image in
             image.af.imageScaled(to: CGSize(width: 50.0, height: 50.0))
         }
@@ -117,7 +118,7 @@ final class ImageFilterTestCase: BaseTestCase {
     // TODO: Needs updates for latest rendering results.
     func _testThatDynamicCompositeImageFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = DynamicCompositeImageFilter(ScaledToSizeFilter(size: largeSquareSize),
                                                  RoundedCornersFilter(radius: 20))
 
@@ -135,7 +136,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatScaledToSizeFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = ScaledToSizeFilter(size: squareSize)
 
         // When
@@ -148,7 +149,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatAspectScaledToFitSizeFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = AspectScaledToFitSizeFilter(size: squareSize)
 
         // When
@@ -161,7 +162,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatAspectScaledToFillSizeFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = AspectScaledToFillSizeFilter(size: squareSize)
 
         // When
@@ -175,7 +176,7 @@ final class ImageFilterTestCase: BaseTestCase {
     // TODO: Needs updates for latest rendering results.
     func _testThatRoundedCornersFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = RoundedCornersFilter(radius: 20, divideRadiusByImageScale: true)
 
         // When
@@ -191,7 +192,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatCircleFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = CircleFilter()
 
         // When
@@ -204,7 +205,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatBlurFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "unicorn", withExtension: "png")
+        let image = image(forResource: "unicorn", withExtension: "png")
         let filter = BlurFilter(blurRadius: 8)
 
         // When
@@ -225,7 +226,7 @@ final class ImageFilterTestCase: BaseTestCase {
     // TODO: Needs updates for latest rendering results.
     func _testThatScaledToSizeWithRoundedCornersFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = ScaledToSizeWithRoundedCornersFilter(size: largeSquareSize, radius: 20)
 
         // When
@@ -241,7 +242,7 @@ final class ImageFilterTestCase: BaseTestCase {
     // TODO: Needs updates for latest rendering results.
     func _testThatAspectScaledToFillSizeWithRoundedCornersFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = AspectScaledToFillSizeWithRoundedCornersFilter(size: largeSquareSize, radius: 20)
 
         // When
@@ -256,7 +257,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatScaledToSizeCircleFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = ScaledToSizeCircleFilter(size: largeSquareSize)
 
         // When
@@ -271,7 +272,7 @@ final class ImageFilterTestCase: BaseTestCase {
 
     func testThatAspectScaledToFillSizeCircleFilterReturnsCorrectFilteredImage() {
         // Given
-        let image = self.image(forResource: "pirate", withExtension: "jpg")
+        let image = image(forResource: "pirate", withExtension: "jpg")
         let filter = AspectScaledToFillSizeCircleFilter(size: largeSquareSize)
 
         // When

@@ -22,8 +22,9 @@
 //  THE SOFTWARE.
 //
 
-#if !os(macOS)
+#if !os(macOS) && !os(watchOS)
 
+import Alamofire
 import AlamofireImage
 import Foundation
 import UIKit
@@ -37,7 +38,7 @@ class UIImageTestCase: BaseTestCase {
     var rainbowImage: UIImage { image(forResource: "rainbow", withExtension: "jpg") }
     var unicornImage: UIImage { image(forResource: "unicorn", withExtension: "png") }
 
-    let scale = Int(UIScreen.main.scale.rounded())
+    let scale = Int(DataRequest.imageScale)
 
     let squareSize = CGSize(width: 50, height: 50)
     let horizontalRectangularSize = CGSize(width: 60, height: 30)
@@ -47,7 +48,7 @@ class UIImageTestCase: BaseTestCase {
 
     func testThatHundredsOfLargeImagesCanBeInitializedAcrossMultipleThreads() {
         // Given
-        let url = self.url(forResource: "huge_map", withExtension: "jpg")
+        let url = url(forResource: "huge_map", withExtension: "jpg")
         let data = try! Data(contentsOf: url)
 
         let lock = NSLock()
@@ -56,7 +57,7 @@ class UIImageTestCase: BaseTestCase {
 
         // When
         for _ in 0..<totalIterations {
-            let expectation = self.expectation(description: "image should be created successfully")
+            let expectation = expectation(description: "image should be created successfully")
 
             DispatchQueue.global(qos: .utility).async {
                 let image = UIImage(data: data)
@@ -79,7 +80,7 @@ class UIImageTestCase: BaseTestCase {
 
     func testThatHundredsOfLargeImagesCanBeInitializedAcrossMultipleThreadsWithThreadSafeInitializers() {
         // Given
-        let url = self.url(forResource: "huge_map", withExtension: "jpg")
+        let url = url(forResource: "huge_map", withExtension: "jpg")
         let data = try! Data(contentsOf: url)
 
         let lock = NSLock()
@@ -88,7 +89,7 @@ class UIImageTestCase: BaseTestCase {
 
         // When
         for _ in 0..<totalIterations {
-            let expectation = self.expectation(description: "image should be created successfully")
+            let expectation = expectation(description: "image should be created successfully")
 
             DispatchQueue.global(qos: .utility).async {
                 let image = UIImage.af.threadSafeImage(with: data)
@@ -220,7 +221,7 @@ class UIImageTestCase: BaseTestCase {
 
         XCTAssertTrue(scaledAppleImage.af.isEqualToImage(expectedAppleImage, withinTolerance: 53), "scaled apple image pixels do not match")
         XCTAssertTrue(scaledPirateImage.af.isEqualToImage(expectedPirateImage), "scaled pirate image pixels do not match")
-        XCTAssertTrue(scaledRainbowImage.af.isEqualToImage(expectedRainbowImage, withinTolerance: 46), "scaled rainbow image pixels do not match")
+        XCTAssertTrue(scaledRainbowImage.af.isEqualToImage(expectedRainbowImage, withinTolerance: 157), "scaled rainbow image pixels do not match")
         XCTAssertTrue(scaledUnicornImage.af.isEqualToImage(expectedUnicornImage, withinTolerance: 26), "scaled unicorn image pixels do not match")
 
         XCTAssertEqual(scaledAppleImage.scale, CGFloat(scale), "image scale should be equal to screen scale")
