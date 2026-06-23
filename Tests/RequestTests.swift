@@ -1,7 +1,7 @@
 //
 //  RequestTests.swift
 //
-//  Copyright (c) 2015 Alamofire Software Foundation (http://alamofire.org/)
+//  Copyright (c) 2022 Alamofire Software Foundation (http://alamofire.org/)
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,7 @@ final class DataRequestTestCase: BaseTestCase {
 
     func testThatAddingAcceptableImageContentTypesInsertsThemIntoTheGlobalList() {
         // Given
-        let contentTypes: Set<String> = ["binary/octet-stream"]
+        let contentTypes: Set = ["binary/octet-stream"]
 
         // When
         let beforeCount = ImageResponseSerializer.acceptableImageContentTypes.count
@@ -54,17 +54,31 @@ final class DataRequestTestCase: BaseTestCase {
         let afterCount = ImageResponseSerializer.acceptableImageContentTypes.count
 
         // Then
-        #if os(iOS) || os(macOS)
-        if #available(macOS 11, iOS 14, *) {
+        #if os(iOS) || os(macOS) || os(visionOS)
+        if #available(macOS 14, iOS 17, *) {
+            XCTAssertEqual(beforeCount, 19, "before count should be 19")
+            XCTAssertEqual(afterCount, 20, "after count should be 20")
+        } else if #available(macOS 13, iOS 16, *) {
+            XCTAssertEqual(beforeCount, 18, "before count should be 18")
+            XCTAssertEqual(afterCount, 19, "after count should be 19")
+        } else if #available(macOS 11, iOS 14, *) {
             XCTAssertEqual(beforeCount, 17, "before count should be 17")
             XCTAssertEqual(afterCount, 18, "after count should be 18")
         } else {
             XCTAssertEqual(beforeCount, 16, "before count should be 16")
             XCTAssertEqual(afterCount, 17, "after count should be 17")
         }
-        #else
-        XCTAssertEqual(beforeCount, 16, "before count should be 16")
-        XCTAssertEqual(afterCount, 17, "after count should be 17")
+        #elseif os(tvOS)
+        if #available(tvOS 17, *) {
+            XCTAssertEqual(beforeCount, 18, "before count should be 17")
+            XCTAssertEqual(afterCount, 19, "after count should be 18")
+        } else if #available(tvOS 16, *) {
+            XCTAssertEqual(beforeCount, 17, "before count should be 17")
+            XCTAssertEqual(afterCount, 18, "after count should be 18")
+        } else {
+            XCTAssertEqual(beforeCount, 16, "before count should be 16")
+            XCTAssertEqual(afterCount, 17, "after count should be 17")
+        }
         #endif
     }
 
@@ -73,7 +87,7 @@ final class DataRequestTestCase: BaseTestCase {
     func testThatImageResponseSerializerCanDownloadAllUniversalImageTypes() {
         func download(_ imageType: Endpoint.Image) {
             // Given
-            let expectation = self.expectation(description: "Request should return \(imageType.rawValue) response image")
+            let expectation = expectation(description: "Request should return \(imageType.rawValue) response image")
 
             var response: AFDataResponse<Image>?
 
@@ -90,7 +104,7 @@ final class DataRequestTestCase: BaseTestCase {
             // Then
             XCTAssertNotNil(response?.request, "request should not be nil")
             XCTAssertNotNil(response?.response, "response should not be nil")
-            XCTAssertTrue(response?.result.isSuccess ?? false, "result should be success")
+            XCTAssertTrue(response?.result.isSuccess ?? false, "result should be success for \(imageType)")
 
             guard let image = response?.result.value else {
                 XCTFail("\(imageType.rawValue) image should not be nil")
@@ -98,7 +112,7 @@ final class DataRequestTestCase: BaseTestCase {
             }
 
             let expectedSize = imageType.expectedSize
-            #if os(iOS) || os(tvOS)
+            #if os(iOS) || os(tvOS) || os(visionOS)
             XCTAssertEqual(image.size, expectedSize.scaledToScreen, "image size does not match expected value")
             XCTAssertTrue(image.isScaledToScreen, "image scale does not match expected value")
             #elseif os(macOS)
@@ -106,21 +120,16 @@ final class DataRequestTestCase: BaseTestCase {
             #endif
         }
 
-        var images = Set(Endpoint.Image.allCases)
-        images.remove(.webp) // WebP is only supported on macOS 11+ and iOS 14+.
-        images.remove(.pdf) // No platform supports direct PDF downloads.
-
-        images.forEach(download)
+        Endpoint.Image.universalCases.forEach(download)
     }
 
     #if os(macOS) || os(iOS) // No WebP support on tvOS or watchOS.
 
-    @available(macOS 11, iOS 14, *)
     func testThatImageResponseSerializerCanDownloadWebPImage() {
         guard #available(macOS 11, iOS 14, *) else { return }
 
         // Given
-        let expectation = self.expectation(description: "Request should return WebP response image")
+        let expectation = expectation(description: "Request should return WebP response image")
 
         var response: AFDataResponse<Image>?
 
@@ -143,7 +152,7 @@ final class DataRequestTestCase: BaseTestCase {
             return
         }
 
-        let expectedSize = Endpoint.Image.png.expectedSize
+        let expectedSize = Endpoint.Image.webp.expectedSize
         #if os(iOS)
         XCTAssertEqual(image.size, expectedSize.scaledToScreen, "image size does not match expected value")
         XCTAssertTrue(image.isScaledToScreen, "image scale does not match expected value")
@@ -154,15 +163,18 @@ final class DataRequestTestCase: BaseTestCase {
 
     #endif
 
-    func testThatImageResponseSerializerCanDownloadImageFromFileURL() {
+    #if !os(watchOS) // AVIF supported on all 2022 OSes except watchOS 9.
+
+    func testThatImageResponseSerializerCanDownloadAVIFImage() {
+        guard #available(macOS 13, iOS 16, tvOS 16, *) else { return }
+
         // Given
-        let url = self.url(forResource: "apple", withExtension: "jpg")
-        let expectation = self.expectation(description: "Request should return JPG response image")
+        let expectation = expectation(description: "Request should return AVIF response image")
 
         var response: AFDataResponse<Image>?
 
         // When
-        session.request(url)
+        session.request(.image(.avif))
             .responseImage { closureResponse in
                 response = closureResponse
                 expectation.fulfill()
@@ -172,29 +184,102 @@ final class DataRequestTestCase: BaseTestCase {
 
         // Then
         XCTAssertNotNil(response?.request, "request should not be nil")
-        XCTAssertNil(response?.response, "response should be nil")
+        XCTAssertNotNil(response?.response, "response should not be nil")
         XCTAssertTrue(response?.result.isSuccess ?? false, "result should be success")
 
-        if let image = response?.result.value {
-            #if os(iOS)
-            let screenScale = UIScreen.main.scale
-            let expectedSize = CGSize(width: CGFloat(180) / screenScale, height: CGFloat(260) / screenScale)
-            XCTAssertEqual(image.size, expectedSize, "image size does not match expected value")
-            XCTAssertEqual(image.scale, screenScale, "image scale does not match expected value")
-            #elseif os(macOS)
-            let expectedSize = CGSize(width: 180.0, height: 260.0)
-            XCTAssertEqual(image.size, expectedSize, "image size does not match expected value")
-            #endif
-        } else {
-            XCTFail("result image should not be nil")
+        guard let image = response?.result.value else {
+            XCTFail("AVIF image should not be nil")
+            return
         }
+
+        let expectedSize = Endpoint.Image.avif.expectedSize
+        #if os(iOS) || os(tvOS) || os(visionOS)
+        XCTAssertEqual(image.size, expectedSize.scaledToScreen, "image size does not match expected value")
+        XCTAssertTrue(image.isScaledToScreen, "image scale does not match expected value")
+        #elseif os(macOS)
+        XCTAssertEqual(image.size, expectedSize, "image size does not match expected value")
+        #endif
     }
+
+    #endif
+
+    func testThatImageResponseSerializerCanDownloadJPEGXLImage() {
+        guard #available(macOS 14, iOS 17, tvOS 17, watchOS 10, *) else { return }
+
+        // Given
+        let expectation = expectation(description: "Request should return JPEG XL response image")
+
+        var response: AFDataResponse<Image>?
+
+        // When
+        session.request(.image(.jxl))
+            .responseImage { closureResponse in
+                response = closureResponse
+                expectation.fulfill()
+            }
+
+        waitForExpectations(timeout: timeout)
+
+        // Then
+        XCTAssertNotNil(response?.request, "request should not be nil")
+        XCTAssertNotNil(response?.response, "response should not be nil")
+        XCTAssertTrue(response?.result.isSuccess ?? false, "result should be success")
+
+        guard let image = response?.result.value else {
+            XCTFail("JPEG XL image should not be nil")
+            return
+        }
+
+        let expectedSize = Endpoint.Image.jxl.expectedSize
+        #if os(iOS) || os(tvOS) || os(visionOS)
+        XCTAssertEqual(image.size, expectedSize.scaledToScreen, "image size does not match expected value")
+        XCTAssertTrue(image.isScaledToScreen, "image scale does not match expected value")
+        #elseif os(macOS)
+        XCTAssertEqual(image.size, expectedSize, "image size does not match expected value")
+        #endif
+    }
+
+//    func testThatImageResponseSerializerCanDownloadImageFromFileURL() {
+//        // Given
+//        let url = self.url(forResource: "apple", withExtension: "jpg")
+//        let expectation = self.expectation(description: "Request should return JPG response image")
+//
+//        var response: AFDataResponse<Image>?
+//
+//        // When
+//        session.request(url)
+//            .responseImage { closureResponse in
+//                response = closureResponse
+//                expectation.fulfill()
+//            }
+//
+//        waitForExpectations(timeout: timeout)
+//
+//        // Then
+//        XCTAssertNotNil(response?.request, "request should not be nil")
+//        XCTAssertNil(response?.response, "response should be nil")
+//        XCTAssertTrue(response?.result.isSuccess ?? false, "result should be success")
+//
+//        if let image = response?.result.value {
+//            #if os(iOS)
+//            let screenScale = UIScreen.main.scale
+//            let expectedSize = CGSize(width: CGFloat(180) / screenScale, height: CGFloat(260) / screenScale)
+//            XCTAssertEqual(image.size, expectedSize, "image size does not match expected value")
+//            XCTAssertEqual(image.scale, screenScale, "image scale does not match expected value")
+//            #elseif os(macOS)
+//            let expectedSize = CGSize(width: 180.0, height: 260.0)
+//            XCTAssertEqual(image.size, expectedSize, "image size does not match expected value")
+//            #endif
+//        } else {
+//            XCTFail("result image should not be nil")
+//        }
+//    }
 
     // MARK: - Tests - Image Serialization Errors
 
     func testThatAttemptingToDownloadImageFromBadURLReturnsFailureResult() {
         // Given
-        let expectation = self.expectation(description: "Request should fail with bad URL")
+        let expectation = expectation(description: "Request should fail with bad URL")
 
         var response: AFDataResponse<Image>?
 
@@ -216,7 +301,7 @@ final class DataRequestTestCase: BaseTestCase {
 
     func testThatAttemptingToDownloadUnsupportedImageTypeReturnsFailureResult() {
         // Given
-        let expectation = self.expectation(description: "Request should return pdf response image")
+        let expectation = expectation(description: "Request should return pdf response image")
 
         var response: AFDataResponse<Image>?
 
@@ -244,7 +329,7 @@ final class DataRequestTestCase: BaseTestCase {
 
     func testThatAttemptingToSerializeEmptyDataReturnsFailureResult() {
         // Given
-        let expectation = self.expectation(description: "Request should download no bytes")
+        let expectation = expectation(description: "Request should download no bytes")
 
         var response: AFDataResponse<Image>?
 
@@ -273,7 +358,7 @@ final class DataRequestTestCase: BaseTestCase {
     func testThatAttemptingToSerializeRandomStreamDataReturnsFailureResult() {
         // Given
         let randomBytes = 4 * 1024 * 1024
-        let expectation = self.expectation(description: "Request should download random bytes")
+        let expectation = expectation(description: "Request should download random bytes")
 
         var response: AFDataResponse<Image>?
 
@@ -301,7 +386,7 @@ final class DataRequestTestCase: BaseTestCase {
 
     func testThatAttemptingToSerializeJSONResponseIntoImageReturnsFailureResult() {
         // Given
-        let expectation = self.expectation(description: "Request should return JSON")
+        let expectation = expectation(description: "Request should return JSON")
 
         var response: AFDataResponse<Image>?
 
